@@ -28,7 +28,7 @@ code in the `src` directory has been split into multiple subprojects.
 
 # Dependencies
 
-The project requires the [libcurl] (https://curl.haxx.se/libcurl/)
+The project requires the [libcurl](https://curl.haxx.se/libcurl/)
 library and whatever dependencies `libcurl` requires. On package-based
 Linux distributions, this typically requires installing a package such
 as `libcurl-devel` (Fedora) or similar.
