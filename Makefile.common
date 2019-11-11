@@ -1,0 +1,90 @@
+#
+# OUTPUT_DIR defaults to BUILD_DIR, but it can be overriden from outside.
+# However, this Makefile is not responsible for creating it, i.e., it has
+# to exist. BUILD_DIR, on the other hand, is created by this Makefile.
+#
+OUTPUT_DIR ?= $(BUILD_DIR)
+
+
+# Generate objects and dependency files
+OBJECTS = $(addprefix $(BUILD_DIR)/,$(SOURCES:%.c=%.o))
+SRCDEPS = $(addprefix $(BUILD_DIR)/,$(SOURCES:%.c=%.d))
+
+# Include directory options
+CFLAGS_INCLUDES = $(addprefix -I,$(INCLUDE_DIRS))
+
+# Shared library options
+LDFLAGS_SHLIBS = $(addprefix -l,$(SHARED_LIBS))
+
+
+# Command to produce dependency file for a single C file
+MAKEDEP.d = $(CC) -MM -MT '$(patsubst %.d,%.o,$@) $@' $(CFLAGS_INCLUDES) $< $(OUTPUT_OPTION)
+
+# Command to compile a single C file
+COMPILE.c = $(CC) $(CFLAGS) $(CFLAGS_ARCH) $(CFLAGS_INCLUDES) -c $< $(OUTPUT_OPTION)
+
+# Command to dependency .o files into a program executable.
+LINK.program = $(CC) $+ $(STATIC_LIBS) $(LDFLAGS_SHLIBS) $(OUTPUT_OPTION)
+
+# Command to dependency .o files into a shared library.
+LINK.shared = $(CC) -shared $+ $(LDFLAGS_SHLIBS) $(OUTPUT_OPTION)
+
+# Command to dependency .o files into a static library.
+LINK.static = $(AR) $(ARFLAGS) $@ $+
+
+
+# Rule to create directory for build files
+$(BUILD_DIR):
+	-mkdir $@
+
+# Rule to produce dependency file for a single C file
+$(BUILD_DIR)/%.d: %.c | $(BUILD_DIR)
+	$(MAKEDEP.d)
+
+# Rule to produce an object file for a single C file
+$(BUILD_DIR)/%.o: %.c
+	$(COMPILE.c)
+
+
+# Create a rule if LIBRARY_STATIC is defined.
+ifneq (,$(LIBRARY_STATIC))
+$(OUTPUT_DIR)/$(LIBRARY_STATIC): $(OBJECTS)
+	$(LINK.static)
+endif
+
+
+# Create a rule if LIBRARY_SHARED is defined.
+ifneq (,$(LIBRARY_SHARED))
+$(OUTPUT_DIR)/$(LIBRARY_SHARED): $(OBJECTS)
+	$(LINK.shared)
+endif
+
+
+# Create a rule if EXECUTABLE is defined.
+ifneq (,$(PROGRAM))
+$(OUTPUT_DIR)/$(PROGRAM): $(OBJECTS) $(STATIC_LIBS)
+	$(LINK.program)
+endif
+
+
+#
+# Include dependency files either if no explicit goal is specified,
+# of if there are any explicit goals left after removing all cleanup
+# and convenience goals.
+#
+ifeq (,$(MAKECMDGOALS))
+-include $(SRCDEPS)
+else ifneq (,$(filter-out clean cleanall pristine debug,$(MAKECMDGOALS)))
+-include $(SRCDEPS)
+endif
+
+.PHONY: clean
+clean:
+	-$(RM) $(OBJECTS)
+
+.PHONY: cleanall
+cleanall:
+	-$(RM) -r $(BUILD_DIR)
+
+# Set default goal to 'all'
+.DEFAULT_GOAL = all
